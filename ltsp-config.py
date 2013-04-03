@@ -9,10 +9,9 @@
 #
 # TODO:
 # Make buttons work
-#
-# TODO Further down road: 
-# Allow user to edit /etc/ltsp/ltsp-server.conf
-# Auto detect network settings
+# Assign tooltip to each column based on lts.conf.options
+# Load all default options in combobox so user can scroll through each
+# Detect if value = true/false and replace with on/off type widget
 # Auto detect location of lts.conf
 # 
 #
@@ -44,12 +43,11 @@ try:
     gobject.threads_init()
     gtk.gdk.threads_init()
 except:
-    print >> sys.stderr, "You need to install the python gtk bindings"
+    print >> sys.stderr, "Error: Cant connect to widget, check to be sure you have pygtk installed and your DISPLAY variable set"
     sys.exit(1)
   
 widget_list = {
-    "main_window" : [ "add_section_button", "remove_section_button",
-                        "section_combobox", 'add_option_button', 
+    "main_window" : [ "section_combobox", 'add_option_button',                      
                         'remove_option_button', 'option_name_entry',
                         'option_value_entry', 'config_hbox',
                         'expand_button', 'collapse_button', 'status1_label',
@@ -102,6 +100,7 @@ class uiTreeView(gtk.TreeView):
 
     def add_columns(self,columns=[], expander_index = -1, edited_callback = None):
         if columns and isinstance(columns, list):
+            tooltips = gtk.Tooltips()
             self.cells = {}
             for i in range(len(columns)):
                 def col0_edited_cb( cell, path, new_text, model, callback ):
@@ -126,7 +125,6 @@ class uiTreeView(gtk.TreeView):
                 setattr(self, 'tvcolumn' + str(i), getattr(gtk, 'TreeViewColumn')(columns[i], self.cells[ columns[i] ]))
                 curr_column = getattr(self, 'tvcolumn' + str(i) )
                 #curr_column.pack_start(self.cell, True)
-                
                 curr_column.set_attributes(self.cells[ columns[i] ], text=i, cell_background_set=3)
                 self.append_column(curr_column)
                 if expander_index >= 0 and i == expander_index:
@@ -237,7 +235,7 @@ class uiLogic(uiBuilder):
         file = kwargs.get('builder_file', 'ltsp-config.ui')
         self.add_file(file)
         self.get_widgets(widget_list)
-        
+
 
         self.config_treeview = uiTreeView( gtk.TreeStore(str, str, str, 'gboolean' ) )
         self.config_treeview.connect('button-press-event', self.on_treeview_button_press_event )
@@ -282,7 +280,7 @@ class uiData(dict):
 class uiHelpers(object):
     def _init(self):
         self.config = Config.Raw()
-	self.config.optionxform=str
+        self.config.optionxform=str
         self.config_filename = sys.path[0] + '/' + 'lts.conf'
         self.selected_section = ( None, None )
         self.config_treeview.get_model().clear()
@@ -389,8 +387,6 @@ class uiSignals(uiHelpers):
         if self.config_filename:
             with open(self.config_filename, 'wb') as c:
                 self.config.write(c)
-            with open(self.config_filename + '.tmp', 'wb') as t:
-		self.config.write(t)
             self.status1_label.set_text('Saved %s' % (self.config_filename.split('/')[-1])) 
             return False            
         return True
