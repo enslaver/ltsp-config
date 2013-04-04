@@ -47,7 +47,7 @@ except:
     sys.exit(1)
   
 widget_list = {
-    "main_window" : [ "section_combobox", 'add_option_button',                      
+    "main_window" : [ "option_combobox", 'add_option_button',                      
                         'remove_option_button', 'option_name_entry',
                         'option_value_entry', 'config_hbox',
                         'expand_button', 'collapse_button', 'status1_label',
@@ -86,6 +86,15 @@ class Config(object):
         pass
     class Safe(ConfigParser.SafeConfigParser, __Parser):
         pass
+        
+class uiListView(gtk.List):
+    def __init__(self, liststore = None):
+        if liststore:
+            self.liststore = liststore
+        else:
+            self.liststore = gtk.ListStore(str)
+        
+        super(uiListView, self).__init__()
         
 class uiTreeView(gtk.TreeView):
     columns = []
@@ -146,7 +155,7 @@ class uiTreeView(gtk.TreeView):
             iters.append(self.append_row(fields, index))
             
         return iters
-        
+              
     def other(self):
         # add data
         iter = self.treestore.append(None, ['123', 'Widget'])
@@ -236,8 +245,8 @@ class uiLogic(uiBuilder):
         self.add_file(file)
         self.get_widgets(widget_list)
 
-
         self.config_treeview = uiTreeView( gtk.TreeStore(str, str, str, 'gboolean' ) )
+        self.config_listview = uiListView( gtk.ListStore(str))
         self.config_treeview.connect('button-press-event', self.on_treeview_button_press_event )
         self.config_treeview.add_columns( ['Sections', 'Options','Values'], 0, self.on_column_edited )
         #self.config_treeview.set_default_sort_func( sort_func = None )
@@ -257,7 +266,6 @@ class uiLogic(uiBuilder):
         self.config_treeview.get_selection().connect('changed', self.set_selected_section )
         self.config_treeview.connect('cursor-changed', self.set_selected_section )
         
-        self.section_combobox.child.connect('activate', self.on_add_section_button_cb)
         self.connect_widgets(self)
         self.main_window.show_all()
         
@@ -286,7 +294,7 @@ class uiHelpers(object):
         self.config_treeview.get_model().clear()
         self.status1_label.set_text('')
         self.warning_dialog_message_label.set_text('')
-        self.section_combobox.child.set_text('')
+        self.option_combobox.child.set_text('')
         #self.option_name_entry.set_text('')
         #self.option_value_entry.set_text('')
         self.main_window.set_title('LTSP Configuration')
@@ -319,6 +327,15 @@ class uiHelpers(object):
         finally:
             self._toggle_option_buttons() 
 
+    def update_option_combobox(self, data = None):
+       fd = open(sys.path[0] + '/' + 'lts.conf.options')
+       data=fd.readlines()
+       fd.close
+       for olist in data():
+          item=i.strip()
+          if item is not None:
+             self.config_list.append(options_list)
+    
     def update_config_treeview(self):
         self.config_treeview.get_model().clear()
         
@@ -430,34 +447,21 @@ class uiSignals(uiHelpers):
         
     def on_add_option_button_cb(self, w, e = None):
         section = self.selected_section[0]
+        self.update_option_combobox()
         name, value = (
-                        self.option_name_entry.get_text(),
-                        self.option_value_entry.get_text()
+                        self.section_name_entry.child.get_text(),
+                        self.section_value_entry.child.get_text()
         )
         
         if name and section:
             self.config.set( section, option, value )
             
             self.status1_label.set_text('Added %s to %s' % ( name, section ))
-            self.option_name_entry.set_text('')
-            self.option_value_entry.set_text('')
+            self.section_name_entry.set_text('')
+            self.section_value_entry.set_text('')
             self.update_config_treeview()
-                
-    def on_add_section_button_cb(self, w, e = None):
-        section = self.section_combobox.child.get_text()
-        if section:
-            try:
-                self.config.add_section(section)
-                self.status1_label.set_text('Added %s' % (section))
-            except ConfigParser.DuplicateSectionError, e:
-                self.status1_label.set_text('Duplicate %s' % (section))
-            finally:
-#                i = self.config_treeview.add_row([section, None, None, True],None)
-#                self.selected_section = ( section, i )
-                self.update_config_treeview()
-                self.option_name_entry.grab_focus()
-                self.section_combobox.child.set_text('')
-                
+            self.section_name_entry.grab_focus()  
+             
     def on_treeview_button_press_event(self, treeview, event):
         if event.button == 3:
             x = int(event.x)
@@ -487,7 +491,9 @@ class uiSignals(uiHelpers):
         
     def on_warning_dialog_ok_button_clicked(self, w=None, e=None):
         self.warning_dialog.hide()
-    
+    def on_option_combobox_popup(self, w=None, e=None):
+        self.update_option_combobox()
+       
     def make_pb(self, tvcolumn, cell, model, iter):
         stock = model.get_value(iter, 1)
         pb = self.treeview.render_icon(stock, gtk.ICON_SIZE_MENU, None)

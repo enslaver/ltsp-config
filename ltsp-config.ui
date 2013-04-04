@@ -213,7 +213,7 @@
                       <object class="GtkLabel" id="label4">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="label" translatable="yes">Setting: </property>
+                        <property name="label" translatable="yes">Option: </property>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -222,11 +222,12 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkComboBox" id="section_combobox">
+                      <object class="GtkComboBox" id="option_combobox">
                         <property name="visible">True</property>
-                        <property name="can_focus">False</property>
+                        <property name="can_focus">True</property>
                         <property name="tooltip_text" translatable="yes">Select an option</property>
                         <property name="has_entry">True</property>
+                        <signal name="move-active" handler="on_option_combobox_popup" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -235,13 +236,13 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="add_section_button">
+                      <object class="GtkButton" id="add_option_butto">
                         <property name="label">gtk-add</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
                         <property name="use_stock">True</property>
-                        <signal name="clicked" handler="on_add_section_button_cb" swapped="no"/>
+                        <signal name="clicked" handler="on_add_option_button_cb" swapped="no"/>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -656,6 +657,17 @@
       <action-widget response="0">open_dialog_cancel_button</action-widget>
       <action-widget response="1">open_dialog_ok_button</action-widget>
     </action-widgets>
+  </object>
+  <object class="GtkListStore" id="options_list">
+    <columns>
+      <!-- column-name colOptions -->
+      <column type="gchararray"/>
+    </columns>
+    <data>
+      <row>
+        <col id="0" translatable="yes">LTSP_TEST</col>
+      </row>
+    </data>
   </object>
   <object class="GtkFileChooserDialog" id="save_dialog">
     <property name="can_focus">False</property>
