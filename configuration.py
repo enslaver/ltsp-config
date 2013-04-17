@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
+"""This is a module for storing classes and methods relating to parsing
+configuration data from config files and representing it in a useful way."""
 
 from collections import namedtuple
+import ConfigParser
+import data_validation
 
-VALID_DATATYPES = ['string', 'integer', 'boolean', 'ip address', 'filepath',
-                   '24hr time string', 'console keymap', 'password',
-                   'horizontal sync rate', 'vertical refresh rate',
-                   'color depth']
+## To add new permitted data types to the LTSVarsConfig (and consequently to
+#  the configuration files) make a new DataType subclass in the data_validation
+#  module.  This is very straightforward, there are many examples, and it is
+#  explained at the bottom of the module docstring.
+VALID_DATATYPES = data_validation.get_data_types()
 
-LTSVarOptions = namedtuple('LTSVarOptions',
-                           'name datatype default description')
+
+# the model for the configuration of a single variable
+VarConfig = namedtuple('LTSVarOptions', 'name datatype default description')
 
 
 class LTSVarsConfig(object):
@@ -83,7 +89,7 @@ class LTSVarsConfig(object):
                 self._handle_ranged_names(lineno, name, datatype, default,
                                           description)
             else:
-                item = LTSVarOptions(name, datatype, default, description)
+                item = VarConfig(name, datatype, default, description)
                 self._data_list.append(item)
                 self._data_dict[item.name] = item
 
@@ -134,7 +140,7 @@ class LTSVarsConfig(object):
             print message % (lineno, left, right)
         names = [base_name % i for i in xrange(left_value, right_value)]
         for numbered_name in names:
-            item = LTSVarOptions(numbered_name, datatype, default, description)
+            item = VarConfig(numbered_name, datatype, default, description)
             self._data_list.append(item)
             self._data_dict[item.name] = item
 
@@ -144,3 +150,31 @@ class LTSVarsConfig(object):
     @property
     def vars(self):
         return [v.name for v in self._data_list]
+
+
+class __Parser(object):
+    name = None
+    def a(self, name = None):
+        if name:
+            self.name = name
+            self.add_section(self.name)
+    def s(self, key = None, value = None, name = None):
+        if name:
+            self.name = name
+        if self.name and key:
+            self.set(self.name, key, value)
+    def w(self, file):
+        with open(file, 'wb') as c:
+            self.write(c)
+
+
+class Conf(ConfigParser.ConfigParser, __Parser):
+    pass
+
+
+class Raw(ConfigParser.RawConfigParser, __Parser):
+    pass
+
+
+class Safe(ConfigParser.SafeConfigParser, __Parser):
+    pass
