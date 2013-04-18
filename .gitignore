@@ -3,3 +3,8 @@
 .DS_Store
 
 .pydevproject
+
+.spyderproject
+
+*.pyc
+*~
