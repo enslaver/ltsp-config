@@ -316,8 +316,8 @@ class uiLogic(uiBuilder):
         # Combobox to add an option
         cell = gtk.CellRendererText()
         self.option_combobox.set_model(gtk.ListStore(str))
+        self.option_combobox.set_entry_text_column(0)
         self.option_combobox.pack_start(cell, True)
-        self.option_combobox.add_attribute(cell, "text", 0)
 
         self.config_treeview = uiTreeView( gtk.TreeStore(str, str, str, 'gboolean' ) )
         self.config_treeview.connect('button-press-event', self.on_treeview_button_press_event )
@@ -336,8 +336,10 @@ class uiLogic(uiBuilder):
 
         self.config_hbox.pack_start(scrolled_window)
 
-        self.config_treeview.get_selection().connect('changed', self.set_selected_section )
-        self.config_treeview.connect('cursor-changed', self.set_selected_section )
+        self.config_treeview.get_selection().connect('changed',
+                                                     self.set_selected_section)
+        self.config_treeview.connect('cursor-changed',
+                                     self.set_selected_section)
 
         self.connect_widgets(self)
         self.main_window.show_all()
