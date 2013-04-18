@@ -309,12 +309,17 @@ class uiBuilder(gtk.Builder):
 class uiLogic(uiBuilder):
     def __init__(self,*args, **kwargs):
         super(uiLogic, self).__init__(*args, **kwargs)
-        file = kwargs.get('builder_file', 'ltsp-config.ui')
-        self.add_file(file)
+        builder_file = kwargs.get('builder_file', 'ltsp-config.ui')
+        self.add_file(builder_file)
         self.get_widgets(widget_list)
 
+        # Combobox to add an option
+        cell = gtk.CellRendererText()
+        self.option_combobox.set_model(gtk.ListStore(str))
+        self.option_combobox.pack_start(cell, True)
+        self.option_combobox.add_attribute(cell, "text", 0)
+
         self.config_treeview = uiTreeView( gtk.TreeStore(str, str, str, 'gboolean' ) )
-        self.config_listview = uiListView( gtk.ListStore(str))
         self.config_treeview.connect('button-press-event', self.on_treeview_button_press_event )
         self.config_treeview.add_columns( ['Sections', 'Options','Values'], 0, self.on_column_edited )
         #self.config_treeview.set_default_sort_func( sort_func = None )
@@ -374,7 +379,7 @@ class uiHelpers(object):
         self.main_window.set_title('LTSP Configuration')
         self.status1_label.set_text('Editing Config')
         self._toggle_option_buttons()
-
+        self.update_option_combobox()
         try:
             self.config.read([self.config_filename])
         except configuration.ConfigParser.MissingSectionHeaderError:
@@ -401,11 +406,18 @@ class uiHelpers(object):
         finally:
             self._toggle_option_buttons()
 
-#TODO this needs some heavy work.
-    def update_option_combobox(self, data=None):
-        print "update_option_combobox(data={})".format(data)
-        self.option_combobox.child.set_text('')
-
+    def update_option_combobox(self):
+        """Update the option combobox with all available variables/options,
+        including both 'unofficial' ones that are a part of the user's config,
+        and 'official' ones that are a part of the vars_conf metadata."""
+        model = self.option_combobox.get_model()
+        model.clear()
+        vars = set(self.vars_meta.vars)
+        for section in self.config.sections():
+            vars.update(self.config.items(section))
+        vars = list(vars)
+        for var in sorted(vars):
+            model.append([var])
 
     def update_config_treeview(self):
         self.config_treeview.get_model().clear()
@@ -445,12 +457,22 @@ class uiSignals(uiHelpers):
         self._init()
 
     def on_column_edited(self, cell, path, new_text, model ):
-        print dir(cell)
+        var = model[path][1]
+        if var in self.vars_meta:
+            var_data = self.vars_meta[var]
+            error = self.validator.check_data(var, new_text)
+            if error:
+                error = error.split(':', 2)[2]
+                self.status1_label.set_text(error)
+                return
+            status = 'Verified value and changed %s to %s'
+        else:
+            status = 'Changed unknown variable %s to %s'
         #if model[path][1] != new_text:
         #    self.status1_label.set_text('Changed %s to %s' % (model[path][1], new_text))
 
         if model[path][2] != new_text:
-            self.status1_label.set_text('Changed %s to %s' % (model[path][1], new_text))
+            self.status1_label.set_text(status % (model[path][1], new_text))
             model[path][2] = new_text
 	    self.config.set( model[path][0], model[path][1], model[path][2] )
         return
@@ -526,7 +548,7 @@ class uiSignals(uiHelpers):
             self.config.remove_section( section )
         else:
             self.status1_label.set_text('Removed %s from %s' % (option, section))
-            self.config.remove_option( section, option )
+            self.config.remove_option(section, option)
 
         self.selected_section = (None, None)
         self.update_config_treeview()
@@ -536,28 +558,27 @@ class uiSignals(uiHelpers):
 
     def on_add_option_button_cb(self, w, e = None):
         section = self.selected_section[0]
-        text = self.option_combobox.get_active_text().upper()
-        if option not in self.vars_conf:
-            self.status1_label.set_text("Unknown option: "+text)
-        self.update_option_combobox()
-#section_name_entry is known only to this method...?
-#        name, value = (
-#                        self.section_name_entry.child.get_text(),
-#                        self.section_value_entry.child.get_text()
-#        )
-#name can't exist because of the above
-#        if name and section:
-#option is a nonexistent local
-#            self.config.set( section, option, value )
+        if section is None:
+            msg = "Can't add option: Select a section first"
+            self.status1_label.set_text(msg)
+            return
+        var = self.option_combobox.get_active_text().upper().strip()
+        if not var:
+            return
+        if var in self.vars_meta:
+            var_data = self.vars_meta[var]
+            value = var_data.default
+            status = "Added option %s to %s and set to default value"
+        else:
+            value = ''
+            status = "Added unknown option %s to %s"
 
-#            self.status1_label.set_text('Added %s to %s' % ( name, section ))
-# Again, section_name_entry is known only to this method.
-#            self.section_name_entry.set_text('')
-#            self.section_value_entry.set_text('')
-#            self.update_config_treeview()
-#            self.section_name_entry.grab_focus()
+        if var and section:
+            self.config.set(section, var, value )
+
+        self.status1_label.set_text(status % (var, section))
         self.update_config_treeview()
-#        self.section_name_entry.grab_focus()
+        self.update_option_combobox()
 
     def on_treeview_button_press_event(self, treeview, event):
         if event.button == 3:
