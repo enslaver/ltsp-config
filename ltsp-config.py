@@ -431,7 +431,6 @@ class uiHelpers(object):
             row = [section, None, None, True]
             section_iter = self.config_treeview.add_row(row, None)
             for option, value in self.config.items(section):
-                option = option.upper()
                 error = self.validator.check_data(option, value)
                 if error:
                     print "Warning for %s: %s" % (option, error)
@@ -564,18 +563,21 @@ class uiSignals(uiHelpers):
             msg = "Can't add option: Select a section first"
             self.status1_label.set_text(msg)
             return
-        var = self.option_combobox.get_active_text().upper().strip()
+        var = self.option_combobox.get_active_text().strip()
         if not var:
             return
         if var in self.vars_meta:
             var_data = self.vars_meta[var]
             value = var_data.default
-            status = "Added option %s to %s and set to default value"
+            status = "Added option %s to %s and set to default value   "
         else:
             value = ''
-            status = "Added unknown option %s to %s"
+            status = "Added unknown option %s to %s   "
 
         if var and section:
+            if var in dict(self.config.items(section)):
+                self.status1_label.set_text("Option %s already present." % var)
+                return
             self.config.set(section, var, value )
 
         self.status1_label.set_text(status % (var, section))
